@@ -1,25 +1,13 @@
-# Allocation Algorithm
+# Bah Humbug Allocator
 
-Constrained optimization algorithm for allocating operational modules to a
-pool of resources under scarcity, based on individually provided
-availabilities. See [the paper](about:blank) for the full mathematical
-formulation.
+Constrained optimization algorithm for allocating operational modules to a pool of resources under scarcity, based on individually provided availabilities. See [the report](BahHumbugAllocator.pdf) for the full mathematical formulation.
 
 ## Overview
 
-Traditional Greedy or Round-Robin allocation treats every module as
-identical, ignoring how scarce its supply is. This algorithm instead:
+Not every module is worth the same: even when supply is abundant overall, it can be scarce for specific modules. This algorithm therefore:
 
-1. **Scores each module** with a weight $w_i$, a logarithmic function of its
-   excess supply over demand — modules with little slack score low, modules
-   with abundant supply score close to 1.
-2. **Allocates resources to modules** by solving a Mixed-Integer Quadratic
-   Program that minimizes the squared deviation from a *proportional
-   target* $T_j(\alpha)$ per resource — the fair share of the total demand
-   each resource should receive, blending an egalitarian and a
-   merit-based (availability-proportional) target via $\alpha \in [0,1]$ —
-   subject to demand satisfaction, availability, and participation
-   constraints.
+1. **Scores each module** with a weight $w_i$, a logarithmic function of its excess supply over demand — modules with little slack score low, modules with abundant supply score close to 1.
+2. **Allocates resources to modules** by solving a Mixed-Integer Quadratic Program that minimizes the squared deviation from a *proportional target* $T_j(\alpha)$ per resource — the fair share of the total demand each resource should receive, blending an egalitarian and a merit-based target via $\alpha \in [0,1]$, subject to demand satisfaction, availability, and participation   constraints.
 
 ## `AllocationClass.py`
 
@@ -30,8 +18,7 @@ Exposes a single class, `AllocationOptimizer`, that wraps both stages above.
 - `demand_vector` — required resources per module.
 - `alpha` — trade-off between egalitarian and proportional targets.
 
-**Properties** (intermediate / derived results, available after the
-corresponding computation has run):
+**Properties** (intermediate / derived results, available after the corresponding computation has run):
 - `module_weights` — the score $w_i$ per module.
 - `targets` — the proportional target $T_j(\alpha)$ per resource.
 - `allocation_matrix` — the optimal binary allocation.
@@ -42,8 +29,7 @@ corresponding computation has run):
 
 **Methods:**
 - `compute_module_weights()` — runs the module scoring stage.
-- `solve(max_time=3600, verbose=True)` — runs the MIQP allocation stage
-  (via CVXPY + SCIP) and populates the result properties above.
+- `solve(max_time=3600, verbose=True)` — runs the MIQP allocation stage (via CVXPY + SCIP) and populates the result properties above.
 
 ```python
 from AllocationClass import AllocationOptimizer
@@ -61,7 +47,7 @@ optimizer.status                        # solver status
 ## Setup
 
 ```bash
-pip install -r requirements.txt
+pip install numpy cvxpy pyscipopt
 ```
 
 SCIP (via `pyscipopt`) is used as the MIQP solver through CVXPY.
