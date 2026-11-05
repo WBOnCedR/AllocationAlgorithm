@@ -5,25 +5,12 @@ from datetime import datetime
 
 
 class AllocationOptimizer:
-    """
-    Constrained optimization algorithm for the allocation of operational
-    modules to resources under scarcity, as described in
-    "Development of a Constrained Optimization Algorithm for the Allocation
-    of Operational Modules in Resource Scarcity Scenarios".
 
-    Two stages:
-      1. Module score computation: a weight w_i is assigned to each module,
-         inversely proportional to its excess supply relative to demand.
-      2. Allocation: a Mixed-Integer Quadratic Program assigns resources to
-         modules, minimizing the squared deviation from a proportional
-         target T_j(alpha) for each resource, subject to demand
-         satisfaction, availability, and participation constraints.
-    """
-
-    def __init__(self, availability_matrix, demand_vector, alpha=0.7):
+    def __init__(self, availability_matrix, demand_vector, alpha=0.7, delta=0.001):
         self.availability_matrix = availability_matrix
         self.demand_vector = demand_vector
         self.alpha = alpha
+        self.delta = delta
 
         self._module_weights = None
         self._targets = None
@@ -107,28 +94,17 @@ class AllocationOptimizer:
 
     @property
     def module_weights(self):
-        """Weight w_i assigned to each module (computed on first access)."""
+        """Weight w_i assigned to each module."""
         if self._module_weights is None:
             self.compute_module_weights()
         return self._module_weights
 
     def compute_module_weights(self):
-        """
-        Computes the module score vector W as a logarithmic function of the
-        excess supply relative to demand:
+        """Computes the module score vector W"""
 
-            w_i = 0                                   if s_i - d_i <= 0
-            w_i = log(s_i - d_i) / max(log(s_i - d_i)) otherwise
-
-        Returns the weight vector, shape (n_modules, 1).
-        """
         excess = self.module_availability - self.demand_vector
-        max_log_excess = np.max(np.log(excess, where=excess > 0, out=np.zeros_like(excess, dtype=float)))
-        self._module_weights = np.where(
-            excess <= 0,
-            0,
-            np.round(np.log(excess) / max_log_excess, 4),
-        )
+        log_excess = np.log(np.maximum(excess, 0) + self.delta)
+        self._module_weights = np.round(np.maximum(0, log_excess / np.max(log_excess)), 4)
         return self._module_weights
 
     @property
@@ -157,17 +133,7 @@ class AllocationOptimizer:
         return self._status
 
     def solve(self, max_time=3600, verbose=True):
-        """
-        Solves the Mixed-Integer Quadratic Program that allocates resources
-        to modules, minimizing the squared deviation from the proportional
-        target T_j(alpha), subject to:
-          - Demand satisfaction: each module receives exactly d_i resources;
-          - Availability: a resource can only be assigned where available;
-          - Participation guarantee: every resource with at least one
-            availability receives at least one assignment.
-
-        Returns the allocation matrix, or None if no optimal solution is found.
-        """
+        
         start_global = time.time()
         S = self.availability_matrix
         D = self.demand_vector
